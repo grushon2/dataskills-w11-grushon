@@ -1,0 +1,21 @@
+species_id,code,common_name,scientific_name,family
+1,AMRO,American Robin,Turdus migratorius,Turdidae
+2,BLJA,Blue Jay,Cyanocitta cristata,Corvidae
+3,NOCA,Northern Cardinal,Cardinalis cardinalis,Cardinalidae
+4,SOSP,Song Sparrow,Melospiza melodia,Passerellidae
+5,RWBL,Red-winged Blackbird,Agelaius phoeniceus,Icteridae
+6,COYE,Common Yellowthroat,Geothlypis trichas,Parulidae
+7,DICK,Dickcissel,Spiza americana,Cardinalidae
+8,EAME,Eastern Meadowlark,Sturnella magna,Icteridae
+9,HOLA,Horned Lark,Eremophila alpestris,Alaudidae
+10,RHWO,Red-headed Woodpecker,Melanerpes erythrocephalus,Picidae
+11,DOWO,Downy Woodpecker,Dryobates pubescens,Picidae
+12,WOTH,Wood Thrush,Hylocichla mustelina,Turdidae
+13,EAWP,Eastern Wood-Pewee,Contopus virens,Tyrannidae
+14,INBU,Indigo Bunting,Passerina cyanea,Cardinalidae
+15,GBHE,Great Blue Heron,Ardea herodias,Ardeidae
+16,SEWR,Sedge Wren,Cistothorus stellaris,Troglodytidae
+17,HOSP,House Sparrow,Passer domesticus,Passeridae
+18,EUST,European Starling,Sturnus vulgaris,Sturnidae
+19,CARW,Carolina Wren,Thryothorus ludovicianus,Troglodytidae
+20,MODO,Mourning Dove,Zenaida macroura,Columbidae

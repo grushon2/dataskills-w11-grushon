@@ -1,0 +1,299 @@
+---
+title: "Data Skills - Week 11 - Relational databases in R"
+author: "Hannah Grushoh"
+date: today
+format:
+  html:
+    embed-resources: true
+editor: source
+---
+
+## How to answer
+
+This lab is a set of worked examples. Run each code chunk in order and read the comments. Questions are marked **Q1**, **Q2**, and so on.
+
+- When a question asks for code, add it to the chunk marked `YOUR TURN`. The code you need is given in the question (usually 1-3 lines).
+- When a question asks for an explanation, write it after **Answer:** in your own words. One to three sentences is enough.
+
+**Important:** this lab saves a database *file* (`data/birds.duckdb`). Only one R session can have that file open for writing at a time. Before you click **Render**, run the last chunk of this document (`dbDisconnect()`) or restart R (*Session > Restart R*). Otherwise the render will stop with a "Could not set lock on file" error.
+
+## Setup
+
+Install these packages once if you don't have them: `install.packages(c("DBI", "duckdb", "dbplyr"))`. You should already have `here` and `tidyverse`.
+
+- `DBI` connects R to a database and sends it SQL.
+- `duckdb` is a database management system that runs inside R ("in-process"), so there is no server to set up.
+- `dbplyr` translates `dplyr` code into SQL. You don't need to load it; `dplyr` uses it automatically when you work with a database table.
+
+```{r}
+#| warning: false
+#| message: false
+
+library(here)
+library(tidyverse)
+library(DBI)
+library(duckdb)
+```
+
+## Data
+
+This week's data are a simulated bird survey that follows the scenario from lecture. Six sites in east-central Illinois were surveyed once a month from April to September in 2024 and 2025. The data come in four CSV files, one per table. Save all four in your project's `data/` folder.
+
+- `sites.csv`: one row per site (name, habitat, coordinates)
+- `species.csv`: one row per species (4-letter code, common and scientific names, family)
+- `observers.csv`: one row per observer
+- `observations.csv`: one row per species counted on a survey
+
+(The counts are simulated for teaching; they are not real survey data.)
+
+## 1. Build a database
+
+First we connect to a database. If the file `data/birds.duckdb` does not exist, DuckDB creates it. If it exists, DuckDB opens it.
+
+```{r}
+#| message: false
+con <- dbConnect(duckdb(), dbdir = here("data", "birds.duckdb"))
+```
+
+Next we read each CSV and write it to the database as a table with `dbWriteTable()`. Its arguments are the connection, the name of the new table, and the data frame. `overwrite = TRUE` replaces the table if it already exists, so you can re-run this chunk (and render) without adding duplicate rows.
+
+```{r}
+dbWriteTable(con, "sites",
+             read_csv(here("data", "sites.csv"), show_col_types = FALSE),
+             overwrite = TRUE)
+dbWriteTable(con, "species",
+             read_csv(here("data", "species.csv"), show_col_types = FALSE),
+             overwrite = TRUE)
+dbWriteTable(con, "observations",
+             read_csv(here("data", "observations.csv"), show_col_types = FALSE),
+             overwrite = TRUE)
+```
+
+**Q1.** The `observers` table is missing. In the chunk below, add it the same way. Then run the next chunk: `dbListTables()` should list four tables. Use `dbListFields()` and the CSV descriptions above to name (a) the primary key of each of the four tables and (b) the three foreign keys in `observations`, and which table each one points to.
+
+**Hints:** See the *Databases* and *Database structure* slides from lecture.
+
+```{r}
+# YOUR TURN (Q1): write observers.csv to a table called "observers"
+dbWriteTable(con, "observers",
+             read_csv(here("data", "observers.csv"), show_col_types = FALSE),
+             overwrite = TRUE)
+```
+
+```{r}
+dbListTables(con)
+dbListFields(con, "observations")
+```
+
+**Answer:** The primary keys for 'observations', 'observers', 'sites', and 'species' are observation ID, observer ID, site ID, and species ID, respectively. The three foreign keys in 'observations' are site_id, species_id, and observer_id, which point to 'sites', 'species', and 'observers'.
+
+## 2. Lazy database tables
+
+`tbl()` creates an R object that *refers* to a table in the database. It prints like a data frame, but the data stay in the database.
+
+```{r}
+obs_db     <- tbl(con, "observations")
+sites_db   <- tbl(con, "sites")
+species_db <- tbl(con, "species")
+
+obs_db
+```
+
+**Q2.** Notice the `?? x 6` at the top of the printout. In the `YOUR TURN` chunk, run `nrow(obs_db)` and then `obs_db |> count()`. Why does `nrow()` return `NA`, and why does `count()` work? (`count()` returns a column `n`.)
+
+```{r}
+# YOUR TURN (Q2)
+```
+
+**Answer:** 
+
+## 3. From `dplyr` to SQL
+
+We can use the same `dplyr` verbs on a database table that we used on data frames in Week 8. Behind the scenes, `dbplyr` writes SQL, the database runs it, and R prints the first rows of the result. This pipeline keeps only the counts of 10 or more birds, then, for each species, counts those observations (`n_obs`) and adds up the birds (`total`):
+
+```{r}
+obs_db |>
+  filter(count >= 10) |>
+  group_by(species_id) |>
+  summarize(n_obs = n(), total = sum(count, na.rm = TRUE))
+```
+
+`show_query()` prints the SQL that `dbplyr` generated instead of running it:
+
+```{r}
+obs_db |>
+  filter(count >= 10) |>
+  group_by(species_id) |>
+  summarize(n_obs = n(), total = sum(count, na.rm = TRUE)) |>
+  show_query()
+```
+
+(SQL removes missing values in `SUM()` automatically; `na.rm = TRUE` just tells `dbplyr` we know that, so it doesn't print a warning.)
+
+**Q3.** In the `YOUR TURN` chunk, copy the pipeline above and add `arrange(desc(total))` just before `show_query()`. Which SQL clause does each `dplyr` verb become: `filter()`, `group_by()`, `summarize()`, and `arrange()`? Is the order of the clauses in the SQL the same as the order of the verbs?
+
+**Hints:** Compare with the *SQL queries* slides and *Notes on SQL syntax* from lecture.
+
+```{r}
+# YOUR TURN (Q3)
+```
+
+**Answer:** 
+
+Nothing is pulled into R until we ask for it. `collect()` runs the query and returns an ordinary data frame (a tibble):
+
+```{r}
+top_species <- obs_db |>
+  filter(count >= 10) |>
+  group_by(species_id) |>
+  summarize(n_obs = n(), total = sum(count, na.rm = TRUE)) |>
+  arrange(desc(total)) |>
+  collect()
+
+class(obs_db)
+class(top_species)
+top_species
+```
+
+**Q4.** `top_species` is now a regular tibble in R's memory. Why is it usually better to put `collect()` at the *end* of a pipeline, as above, rather than at the start (`obs_db |> collect() |> filter(...)`)? Think about a table with millions of rows.
+
+**Answer:** 
+
+## 4. Joins and keys
+
+Databases keep each kind of thing in its own table, so we join tables when we need information from more than one. This left join adds species names to every observation, then keeps the rows where no species matched:
+
+```{r}
+obs_db |>
+  left_join(species_db, by = join_by(species_id)) |>
+  filter(is.na(common_name))
+```
+
+**Q5.** An anti-join returns the rows of one table that have *no* match in another (Week 8). In the `YOUR TURN` chunk, run `obs_db |> anti_join(species_db, by = join_by(species_id))` and check that you get the same rows. (a) How many observations have a `species_id` that is not in the `species` table, and what is that ID? (b) If you used `inner_join()` to total birds by species, what would happen to these rows? (c) Name one way a database can stop this kind of error at data entry.
+
+**Hints:** See the *SQL queries – joins* slides and the *Why relational databases?* slide from lecture.
+
+```{r}
+# YOUR TURN (Q5)
+```
+
+**Answer:** 
+
+We can join more than two tables in one pipeline. This counts the number of species (`n_distinct()`, which becomes `COUNT(DISTINCT ...)` in SQL) and the number of surveys at each site:
+
+```{r}
+obs_db |>
+  inner_join(sites_db, by = join_by(site_id)) |>
+  inner_join(species_db, by = join_by(species_id)) |>
+  group_by(site_name, habitat) |>
+  summarize(n_species = n_distinct(species_id),
+            n_surveys = n_distinct(date),
+            .groups = "drop") |>
+  arrange(desc(n_species)) |>
+  collect()
+```
+
+**Q6.** In the `YOUR TURN` chunk, copy the pipeline above and add `filter(date >= as.Date("2025-01-01"))` as the first step after `obs_db`, so that only the 2025 surveys are used. Which site and habitat had the most species in 2025, and which had the fewest? Why did we join `species_db` here, even though no columns from it are used in the summary? (Look back at Q5.)
+
+```{r}
+# YOUR TURN (Q6)
+```
+
+**Answer:** 
+
+## 5. Writing SQL yourself
+
+`dbplyr` is convenient, but much of the world's data lives in databases that you'll query with SQL directly. `dbGetQuery()` sends a SQL string to the database and returns the result as a data frame. This query lists the five largest counts of Great Blue Heron (`species_id` 15):
+
+```{r}
+dbGetQuery(con, "
+  SELECT site_id, date, count
+  FROM observations
+  WHERE species_id = 15
+  ORDER BY count DESC
+  LIMIT 5
+")
+```
+
+In SQL, we can give a table a short nickname (an *alias*) after its name, such as `o` for `observations`, and then write `o.count` to mean "the `count` column of `observations`". This avoids confusion when two tables have a column with the same name.
+
+**Q7.** Complete the query in the `YOUR TURN` chunk so that it returns the five species with the most birds counted in total at Kennekuk County Park (`site_id` 3), with the largest total first. Uncomment the query (select the lines and press Ctrl/Cmd + Shift + C), then replace each `___`:
+
+- `WHERE o.site_id = 3`
+- `GROUP BY sp.common_name`
+- `ORDER BY total DESC`
+
+Which species had the highest total at Kennekuk, and how many birds were counted?
+
+**Hints:** See the *SQL queries – grouping and summarizing* and *SQL queries – joins* slides from lecture.
+
+```{r}
+# YOUR TURN (Q7): replace each ___
+# dbGetQuery(con, "
+#   SELECT sp.common_name, SUM(o.count) AS total
+#   FROM observations o
+#   JOIN species sp ON o.species_id = sp.species_id
+#   WHERE ___
+#   GROUP BY ___
+#   ORDER BY ___
+#   LIMIT 5
+# ")
+```
+
+**Answer:** 
+
+## 6. Memory
+
+Our survey table is small. To see why databases help with large data, we make a table with 10 million rows by resampling the observations. We put it in a separate, temporary database file (`tempfile()` makes a file in your computer's temporary folder), so it doesn't bloat `birds.duckdb` or your Git repository. This chunk may take a few seconds.
+
+```{r}
+#| message: false
+observations <- read_csv(here("data", "observations.csv"), show_col_types = FALSE)
+big_obs <- slice_sample(observations, n = 1e7, replace = TRUE)
+
+con_temp <- dbConnect(duckdb(), dbdir = tempfile(fileext = ".duckdb"))
+dbWriteTable(con_temp, "big_obs", big_obs)
+big_obs_db <- tbl(con_temp, "big_obs")
+
+# Size in memory of the data frame and of the database reference
+format(object.size(big_obs), units = "MB")
+format(object.size(big_obs_db), units = "MB")
+
+# The database can still summarize all 10 million rows
+big_obs_db |>
+  group_by(site_id) |>
+  summarize(mean_count = mean(count, na.rm = TRUE)) |>
+  arrange(site_id) |>
+  collect()
+```
+
+**Q8.** How much memory does `big_obs` use compared with `big_obs_db`, and why are they so different? Now imagine a file 100 times larger (a billion rows). Could you load it into R as a data frame on your laptop? Could you still summarize it with DuckDB?
+
+**Hints:** See the *R data.frame vs. relational database table* slide from lecture.
+
+**Answer:** 
+
+```{r}
+# Close the temporary database and remove the big data frame from R's memory
+dbDisconnect(con_temp)
+rm(big_obs, big_obs_db)
+```
+
+## 7. Wrap-up
+
+**Q9.** These survey data have about 500 rows in four small tables. Using the *When should you use a database?* slide from lecture, give one reason a project like this might use a database and one reason CSV files might be enough.
+
+**Answer:** 
+
+Finally, disconnect from the database file. This releases the lock on `birds.duckdb` so that other programs (or the Render button) can open it.
+
+```{r}
+dbDisconnect(con)
+```
+
+## Submission
+
+1. Fill in your name in the YAML header.
+2. Run the last chunk (or restart R), then render this document to HTML.
+3. Commit and push this file, the rendered HTML, and `data/birds.duckdb` to your `dataskills-w11-LASTNAME` repository. Make at least 3 commits during the lab with informative messages.
+4. Upload this `.qmd` file and the HTML file to Canvas.
