@@ -103,9 +103,12 @@ obs_db
 
 ```{r}
 # YOUR TURN (Q2)
+nrow(obs_db)
+obs_db |> count()
+
 ```
 
-**Answer:** 
+**Answer:** nrow() returns NA because the table is in the database, not an R dataframe. However, count() works, because the database can count the rows and return them to R.
 
 ## 3. From `dplyr` to SQL
 
