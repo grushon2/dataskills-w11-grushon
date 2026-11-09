@@ -108,7 +108,7 @@ obs_db |> count()
 
 ```
 
-**Answer:** nrow() returns NA because the table is in the database, not an R dataframe. However, count() works, because the database can count the rows and return them to R.
+**Answer:** nrow() returns NA because the table is in the database, not an R dataframe. However, count() works, because the database can count the rows and return them to R. 
 
 ## 3. From `dplyr` to SQL
 
@@ -138,10 +138,15 @@ obs_db |>
 **Hints:** Compare with the *SQL queries* slides and *Notes on SQL syntax* from lecture.
 
 ```{r}
-# YOUR TURN (Q3)
+obs_db |>
+  filter(count >= 10) |>
+  group_by(species_id) |>
+  summarize(n_obs = n(), total = sum(count, na.rm = TRUE)) |>
+  arrange(desc(total)) |>
+  show_query()
 ```
 
-**Answer:** 
+**Answer:** 'filter()' becomes 'WHERE'; 'group_by()' becomes 'GROUP BY'; 'summarize()' becomes 'SELECT'; 'arrange()' becomes 'ORDER BY'. The order of the clauses isn't the same in SQL as it is in the dplyr package.
 
 Nothing is pulled into R until we ask for it. `collect()` runs the query and returns an ordinary data frame (a tibble):
 
@@ -160,7 +165,7 @@ top_species
 
 **Q4.** `top_species` is now a regular tibble in R's memory. Why is it usually better to put `collect()` at the *end* of a pipeline, as above, rather than at the start (`obs_db |> collect() |> filter(...)`)? Think about a table with millions of rows.
 
-**Answer:** 
+**Answer:** It's better to put 'collect()' at the end of the pipeline because then, only the queried data will be pulled into R. If we put it at the beginning, the entire dataset would get pulled into R, likely causing a crash, especially if a table contained millions of rows.
 
 ## 4. Joins and keys
 
