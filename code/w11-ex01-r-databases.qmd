@@ -300,7 +300,7 @@ rm(big_obs, big_obs_db)
 
 **Q9.** These survey data have about 500 rows in four small tables. Using the *When should you use a database?* slide from lecture, give one reason a project like this might use a database and one reason CSV files might be enough.
 
-**Answer:** 
+**Answer:** A database could potentially work for this project if it was collaborative and I wanted to avoid multiple users on the same CSV files. CSV files would also be enough since this is a small dataset, and they may be more convenient for a quick analysis on a single user's computer.
 
 Finally, disconnect from the database file. This releases the lock on `birds.duckdb` so that other programs (or the Render button) can open it.
 
