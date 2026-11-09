@@ -173,7 +173,7 @@ Databases keep each kind of thing in its own table, so we join tables when we ne
 
 ```{r}
 obs_db |>
-  left_join(species_db, by = join_by(species_id)) |>
+  left_join(species_db, by = "species_id") |> # I was getting an error, so I added quotes and removed 'join_by'
   filter(is.na(common_name))
 ```
 
@@ -183,16 +183,17 @@ obs_db |>
 
 ```{r}
 # YOUR TURN (Q5)
+obs_db |> anti_join(species_db, by = "species_id") # error here too, added quotes and removed 'join_by'
 ```
 
-**Answer:** 
+**Answer:** (a) There are 3 observations that have a 'species_id' missing from the 'species' table, and it is 21. (b) These rows would've been removed if I had used an inner join instead. A database would've prevented this in data entry because of contraints on foreign keys.
 
 We can join more than two tables in one pipeline. This counts the number of species (`n_distinct()`, which becomes `COUNT(DISTINCT ...)` in SQL) and the number of surveys at each site:
 
 ```{r}
 obs_db |>
-  inner_join(sites_db, by = join_by(site_id)) |>
-  inner_join(species_db, by = join_by(species_id)) |>
+  inner_join(sites_db, by = "site_id") |> # error here too
+  inner_join(species_db, by = "species_id") |> # and here, fixed both by removing 'join_by' and adding quotes
   group_by(site_name, habitat) |>
   summarize(n_species = n_distinct(species_id),
             n_surveys = n_distinct(date),
@@ -204,10 +205,19 @@ obs_db |>
 **Q6.** In the `YOUR TURN` chunk, copy the pipeline above and add `filter(date >= as.Date("2025-01-01"))` as the first step after `obs_db`, so that only the 2025 surveys are used. Which site and habitat had the most species in 2025, and which had the fewest? Why did we join `species_db` here, even though no columns from it are used in the summary? (Look back at Q5.)
 
 ```{r}
-# YOUR TURN (Q6)
+obs_db |>
+  filter(date >= as.Date("2025-01-01")) |>
+  inner_join(sites_db, by = "site_id") |> 
+  inner_join(species_db, by = "species_id") |> 
+  group_by(site_name, habitat) |>
+  summarize(n_species = n_distinct(species_id),
+            n_surveys = n_distinct(date),
+            .groups = "drop") |>
+  arrange(desc(n_species)) |>
+  collect()
 ```
 
-**Answer:** 
+**Answer:** In 2025, Allerton Park, which is classified as forest, had the most species (n = 15) and Crystal Lake Park, which is classified as urban, had the fewest species (n = 10). We joined 'species_db' so that observations missing species identification codes are dropped.
 
 ## 5. Writing SQL yourself
 
