@@ -26,7 +26,6 @@ Install these packages once if you don't have them: `install.packages(c("DBI", "
 - `dbplyr` translates `dplyr` code into SQL. You don't need to load it; `dplyr` uses it automatically when you work with a database table.
 
 ```{r}
-#| warning: false
 #| message: false
 
 library(here)
@@ -288,7 +287,7 @@ big_obs_db |>
 
 **Hints:** See the *R data.frame vs. relational database table* slide from lecture.
 
-**Answer:** 'big_obs' uses 480,006,384 bytes while 'big_obs_db' only uses 37,304 bytes. 'big_obs' is significantly larger because it's an R data frame, which is stored in memory. 'big_obs_df' is a database table, which is stored on disk. For a file with a billion rows, I would be unable to load it into R as a data frame due to RAM limits, but I could still summarize it with DuckDB through R.
+**Answer:** 'big_obs' uses 457.8 Mb while 'big_obs_db' only uses 0 Mb. 'big_obs' is significantly larger because it's an R data frame, which is stored in memory. 'big_obs_df' is a database table, which is stored on disk. For a file with a billion rows, I would be unable to load it into R as a data frame due to RAM limits, but I could still summarize it with DuckDB through R.
 
 ```{r}
 # Close the temporary database and remove the big data frame from R's memory
@@ -305,7 +304,7 @@ rm(big_obs, big_obs_db)
 Finally, disconnect from the database file. This releases the lock on `birds.duckdb` so that other programs (or the Render button) can open it.
 
 ```{r}
-dbDisconnect(con)
+dbDisconnect(con, shutdown = TRUE) # I was still getting the 'could not set lock on file' error, so I added this, as suggested in the error message
 ```
 
 ## Submission
