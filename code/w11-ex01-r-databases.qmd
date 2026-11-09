@@ -246,19 +246,18 @@ Which species had the highest total at Kennekuk, and how many birds were counted
 **Hints:** See the *SQL queries – grouping and summarizing* and *SQL queries – joins* slides from lecture.
 
 ```{r}
-# YOUR TURN (Q7): replace each ___
-# dbGetQuery(con, "
-#   SELECT sp.common_name, SUM(o.count) AS total
-#   FROM observations o
-#   JOIN species sp ON o.species_id = sp.species_id
-#   WHERE ___
-#   GROUP BY ___
-#   ORDER BY ___
-#   LIMIT 5
-# ")
+dbGetQuery(con, "
+  SELECT sp.common_name, SUM(o.count) AS total
+  FROM observations o
+  JOIN species sp ON o.species_id = sp.species_id
+  WHERE o.site_id = 3
+  GROUP BY sp.common_name
+  ORDER BY total DESC
+  LIMIT 5
+")
 ```
 
-**Answer:** 
+**Answer:** Red-winged Blackbirds had the highest abundance of observations at Kennekuk (n = 150 individuals).
 
 ## 6. Memory
 
@@ -289,7 +288,7 @@ big_obs_db |>
 
 **Hints:** See the *R data.frame vs. relational database table* slide from lecture.
 
-**Answer:** 
+**Answer:** 'big_obs' uses 480,006,384 bytes while 'big_obs_db' only uses 37,304 bytes. 'big_obs' is significantly larger because it's an R data frame, which is stored in memory. 'big_obs_df' is a database table, which is stored on disk. For a file with a billion rows, I would be unable to load it into R as a data frame due to RAM limits, but I could still summarize it with DuckDB through R.
 
 ```{r}
 # Close the temporary database and remove the big data frame from R's memory
